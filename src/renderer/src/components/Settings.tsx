@@ -17,11 +17,31 @@ function SettingsInner({ settings, onSave, onClose }: Props): React.JSX.Element 
 
   const provider = draft.providers[draft.activeProvider]
 
+  function applyModelList(list: OllamaModel[]): void {
+    setModels(list)
+    setOllamaError(null)
+    // If the saved model is not in the fetched list (e.g. user switched to a
+    // tag they have not pulled), auto-select the first available model so the
+    // visible value matches what will be saved.
+    if (
+      list.length > 0 &&
+      !list.some((m) => m.name === draft.providers.ollama.model)
+    ) {
+      const first = list[0].name
+      setDraft((prev) => ({
+        ...prev,
+        providers: {
+          ...prev.providers,
+          ollama: { ...prev.providers.ollama, model: first }
+        }
+      }))
+    }
+  }
+
   async function refreshOllamaModels(): Promise<void> {
     try {
       const list = await window.api.ollama.listModels(draft.providers.ollama.baseUrl)
-      setModels(list)
-      setOllamaError(null)
+      applyModelList(list)
     } catch (err) {
       setOllamaError(err instanceof Error ? err.message : String(err))
     }
@@ -34,8 +54,7 @@ function SettingsInner({ settings, onSave, onClose }: Props): React.JSX.Element 
       try {
         const list = await window.api.ollama.listModels(draft.providers.ollama.baseUrl)
         if (cancelled) return
-        setModels(list)
-        setOllamaError(null)
+        applyModelList(list)
       } catch (err) {
         if (cancelled) return
         setOllamaError(err instanceof Error ? err.message : String(err))
@@ -44,6 +63,7 @@ function SettingsInner({ settings, onSave, onClose }: Props): React.JSX.Element 
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.activeProvider, draft.providers.ollama.baseUrl])
 
   function patchProvider(patch: Partial<typeof provider>): void {
