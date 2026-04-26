@@ -92,6 +92,7 @@ export async function runAgentStep(
     messages,
     temperature: 0.2,
     signal,
+    jsonMode: true,
     onChunk: (delta) => {
       buffer += delta
     }

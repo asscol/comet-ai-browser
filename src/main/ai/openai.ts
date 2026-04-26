@@ -6,7 +6,8 @@ export const openAICompatible: ProviderHandler = async ({
   messages,
   temperature,
   signal,
-  onChunk
+  onChunk,
+  jsonMode
 }) => {
   const url = `${config.baseUrl.replace(/\/$/, '')}/chat/completions`
   const headers: Record<string, string> = {
@@ -20,16 +21,18 @@ export const openAICompatible: ProviderHandler = async ({
     headers['X-Title'] = 'Comet AI Browser'
   }
 
+  const body: Record<string, unknown> = {
+    model: config.model,
+    temperature,
+    stream: true,
+    messages: messages.map((m) => ({ role: m.role, content: m.content }))
+  }
+  if (jsonMode) body.response_format = { type: 'json_object' }
   const res = await fetch(url, {
     method: 'POST',
     headers,
     signal,
-    body: JSON.stringify({
-      model: config.model,
-      temperature,
-      stream: true,
-      messages: messages.map((m) => ({ role: m.role, content: m.content }))
-    })
+    body: JSON.stringify(body)
   })
 
   if (!res.ok || !res.body) {

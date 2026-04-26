@@ -16,21 +16,24 @@ export const ollama: ProviderHandler = async ({
   messages,
   temperature,
   signal,
-  onChunk
+  onChunk,
+  jsonMode
 }) => {
   const url = `${config.baseUrl.replace(/\/$/, '')}/api/chat`
+  const body: Record<string, unknown> = {
+    model: config.model,
+    stream: true,
+    options: { temperature },
+    messages: messages.map((m) => ({ role: m.role, content: m.content }))
+  }
+  if (jsonMode) body.format = 'json'
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal,
     // @ts-expect-error – `dispatcher` is a Node/undici-only fetch option
     dispatcher: ollamaDispatcher,
-    body: JSON.stringify({
-      model: config.model,
-      stream: true,
-      options: { temperature },
-      messages: messages.map((m) => ({ role: m.role, content: m.content }))
-    })
+    body: JSON.stringify(body)
   })
 
   if (!res.ok || !res.body) {
