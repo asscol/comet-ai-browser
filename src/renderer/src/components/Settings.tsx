@@ -23,10 +23,7 @@ function SettingsInner({ settings, onSave, onClose }: Props): React.JSX.Element 
     // If the saved model is not in the fetched list (e.g. user switched to a
     // tag they have not pulled), auto-select the first available model so the
     // visible value matches what will be saved.
-    if (
-      list.length > 0 &&
-      !list.some((m) => m.name === draft.providers.ollama.model)
-    ) {
+    if (list.length > 0 && !list.some((m) => m.name === draft.providers.ollama.model)) {
       const first = list[0].name
       setDraft((prev) => ({
         ...prev,

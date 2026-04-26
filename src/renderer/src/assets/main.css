@@ -510,3 +510,136 @@ body.resizing {
 input[type='range'] {
   width: 100%;
 }
+
+/* Agent mode styles */
+.agent-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.ai-toggles {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.msg.agent-step {
+  background: var(--bg-3);
+  border-left: 3px solid var(--accent);
+  padding: 8px 10px;
+  margin: 4px 0;
+  border-radius: 4px;
+}
+
+.msg.agent-step.status-error {
+  border-left-color: var(--error);
+}
+
+.msg.agent-step.status-rejected {
+  border-left-color: var(--fg-dim);
+  opacity: 0.7;
+}
+
+.msg.agent-step.status-awaiting {
+  border-left-color: var(--accent-2);
+}
+
+.agent-action {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--accent);
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.agent-thought {
+  color: var(--fg);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.agent-args {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--fg-dim);
+  word-break: break-all;
+}
+
+.agent-result {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+
+.agent-pending {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--accent-2);
+  font-style: italic;
+}
+
+.agent-rejected {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--error);
+}
+
+.msg.agent-final {
+  background: var(--bg-3);
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.msg.agent-final.status-done {
+  border-color: var(--accent);
+}
+
+.msg.agent-final.status-error,
+.msg.agent-final.status-cancelled {
+  border-color: var(--error);
+}
+
+.agent-confirm {
+  background: var(--bg-3);
+  border-top: 2px solid var(--accent-2);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent-confirm-title {
+  font-weight: 600;
+  color: var(--accent-2);
+}
+
+.agent-confirm-reason {
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.agent-confirm-detail {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--fg-dim);
+  background: var(--bg-2);
+  padding: 6px 8px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.agent-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}

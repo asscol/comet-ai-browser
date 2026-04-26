@@ -46,6 +46,53 @@ export interface OllamaModel {
   size?: number
 }
 
+export type AgentActionType =
+  | 'navigate'
+  | 'click'
+  | 'type'
+  | 'scroll'
+  | 'wait'
+  | 'read'
+  | 'execute_js'
+  | 'done'
+
+export interface AgentAction {
+  thought: string
+  action: AgentActionType
+  args: Record<string, unknown>
+}
+
+export interface AgentElement {
+  id: number
+  tag: string
+  type?: string
+  text?: string
+  placeholder?: string
+  value?: string
+  href?: string
+  ariaLabel?: string
+}
+
+export interface AgentSnapshot {
+  url: string
+  title: string
+  elements: AgentElement[]
+  textPreview: string
+  scrollY: number
+  scrollHeight: number
+  innerHeight: number
+}
+
+export interface AgentStepRequest {
+  requestId: string
+  messages: ChatMessage[]
+}
+
+export interface AgentStepResponse {
+  action: AgentAction
+  raw: string
+}
+
 export const DEFAULT_SETTINGS: AppSettings = {
   activeProvider: 'ollama',
   providers: {

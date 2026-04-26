@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { AppSettings, ChatRequest, ChatStreamEvent, OllamaModel } from '../shared/types'
+import type {
+  AgentStepRequest,
+  AgentStepResponse,
+  AppSettings,
+  ChatRequest,
+  ChatStreamEvent,
+  OllamaModel
+} from '../shared/types'
 
 const api = {
   settings: {
@@ -19,6 +26,12 @@ const api = {
       ipcRenderer.on('chat:stream', listener)
       return () => ipcRenderer.removeListener('chat:stream', listener)
     }
+  },
+  agent: {
+    step: (req: AgentStepRequest): Promise<AgentStepResponse> =>
+      ipcRenderer.invoke('agent:step', req),
+    cancel: (requestId: string): Promise<void> => ipcRenderer.invoke('chat:cancel', requestId),
+    systemPrompt: (): Promise<string> => ipcRenderer.invoke('agent:systemPrompt')
   }
 }
 

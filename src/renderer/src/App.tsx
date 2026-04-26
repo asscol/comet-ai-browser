@@ -102,6 +102,11 @@ function App(): React.JSX.Element {
     [activeId]
   )
 
+  const getWebview = useCallback((): Electron.WebviewTag | null => {
+    if (!activeTab) return null
+    return viewRefs.current.get(activeTab.id)?.getElement() ?? null
+  }, [activeTab])
+
   const getPageContext = useCallback(async (): Promise<PageContext | null> => {
     if (!activeTab) return null
     const wv = viewRefs.current.get(activeTab.id)?.getElement()
@@ -196,7 +201,7 @@ function App(): React.JSX.Element {
         }}
       />
       <div className="sidebar" style={{ width: sidebarWidth }}>
-        <AIChat settings={settings} getPageContext={getPageContext} />
+        <AIChat settings={settings} getPageContext={getPageContext} getWebview={getWebview} />
       </div>
       {showSettings && (
         <Settings

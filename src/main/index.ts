@@ -4,7 +4,15 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { loadSettings, saveSettings } from './settings'
 import { providerHandlers, listOllamaModels } from './ai'
-import { AppSettings, ChatRequest, ChatStreamEvent, PageContext } from '../shared/types'
+import { runAgentStep, AGENT_SYSTEM_PROMPT } from './agent'
+import {
+  AgentStepRequest,
+  AgentStepResponse,
+  AppSettings,
+  ChatRequest,
+  ChatStreamEvent,
+  PageContext
+} from '../shared/types'
 
 if (process.env.ELECTRON_DISABLE_GPU === '1') {
   app.disableHardwareAcceleration()
@@ -77,6 +85,22 @@ function registerIpc(): void {
       activeRequests.delete(requestId)
     }
   })
+
+  ipcMain.handle(
+    'agent:step',
+    async (_e, payload: AgentStepRequest): Promise<AgentStepResponse> => {
+      const settings = await loadSettings()
+      const controller = new AbortController()
+      activeRequests.set(payload.requestId, controller)
+      try {
+        return await runAgentStep(settings, payload.messages, controller.signal)
+      } finally {
+        activeRequests.delete(payload.requestId)
+      }
+    }
+  )
+
+  ipcMain.handle('agent:systemPrompt', async () => AGENT_SYSTEM_PROMPT)
 
   ipcMain.handle('chat:send', async (event: IpcMainInvokeEvent, payload: ChatRequest) => {
     const settings = await loadSettings()
