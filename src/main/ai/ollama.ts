@@ -1,5 +1,15 @@
+import { Agent } from 'undici'
 import { ProviderHandler } from './types'
 import { OllamaModel } from '../../shared/types'
+
+// Local LLMs on CPU can take many minutes for prompt eval before the first
+// token arrives. Disable undici's default 300 s headers/body timeouts for
+// Ollama calls; we still rely on the AbortSignal for cancellation.
+const ollamaDispatcher = new Agent({
+  headersTimeout: 0,
+  bodyTimeout: 0,
+  connectTimeout: 30_000
+})
 
 export const ollama: ProviderHandler = async ({
   config,
@@ -13,6 +23,8 @@ export const ollama: ProviderHandler = async ({
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal,
+    // @ts-expect-error – `dispatcher` is a Node/undici-only fetch option
+    dispatcher: ollamaDispatcher,
     body: JSON.stringify({
       model: config.model,
       stream: true,
