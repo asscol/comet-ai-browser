@@ -6,6 +6,12 @@ import { loadSettings, saveSettings } from './settings'
 import { providerHandlers, listOllamaModels } from './ai'
 import { AppSettings, ChatRequest, ChatStreamEvent, PageContext } from '../shared/types'
 
+if (process.env.ELECTRON_DISABLE_GPU === '1') {
+  app.disableHardwareAcceleration()
+  app.commandLine.appendSwitch('disable-gpu')
+  app.commandLine.appendSwitch('disable-software-rasterizer')
+}
+
 const activeRequests = new Map<string, AbortController>()
 
 function buildSystemPrompt(base: string, ctx?: PageContext | null, maxChars = 8000): string {

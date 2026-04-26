@@ -16,6 +16,7 @@ const BrowserView = forwardRef<BrowserViewHandle, Props>(function BrowserView(
   ref
 ) {
   const wvRef = useRef<Electron.WebviewTag | null>(null)
+  const domReadyRef = useRef(false)
 
   useImperativeHandle(ref, () => ({
     getElement: () => wvRef.current
@@ -25,13 +26,37 @@ const BrowserView = forwardRef<BrowserViewHandle, Props>(function BrowserView(
     const el = wvRef.current
     if (!el) return
 
+    // Electron requires `allowpopups` as a bare attribute. The JSX boolean form
+    // emits an HTML attribute warning, so set it imperatively.
+    el.setAttribute('allowpopups', '')
+
+    const safeGet = <T,>(fn: () => T, fallback: T): T => {
+      try {
+        return fn()
+      } catch {
+        return fallback
+      }
+    }
+
+    const handleDomReady = (): void => {
+      domReadyRef.current = true
+      onUpdate({
+        canGoBack: safeGet(() => el.canGoBack(), false),
+        canGoForward: safeGet(() => el.canGoForward(), false),
+        url: safeGet(() => el.getURL(), tab.url)
+      })
+    }
     const handleStartLoading = (): void => onUpdate({ loading: true })
     const handleStopLoading = (): void => {
+      if (!domReadyRef.current) {
+        onUpdate({ loading: false })
+        return
+      }
       onUpdate({
         loading: false,
-        canGoBack: el.canGoBack(),
-        canGoForward: el.canGoForward(),
-        url: el.getURL()
+        canGoBack: safeGet(() => el.canGoBack(), false),
+        canGoForward: safeGet(() => el.canGoForward(), false),
+        url: safeGet(() => el.getURL(), tab.url)
       })
     }
     const handleTitleUpdated = (e: Electron.PageTitleUpdatedEvent): void => {
@@ -40,19 +65,20 @@ const BrowserView = forwardRef<BrowserViewHandle, Props>(function BrowserView(
     const handleNavigate = (e: Electron.DidNavigateEvent): void => {
       onUpdate({
         url: e.url,
-        canGoBack: el.canGoBack(),
-        canGoForward: el.canGoForward()
+        canGoBack: safeGet(() => el.canGoBack(), false),
+        canGoForward: safeGet(() => el.canGoForward(), false)
       })
     }
     const handleNavigateInPage = (e: Electron.DidNavigateInPageEvent): void => {
       if (!e.isMainFrame) return
       onUpdate({
         url: e.url,
-        canGoBack: el.canGoBack(),
-        canGoForward: el.canGoForward()
+        canGoBack: safeGet(() => el.canGoBack(), false),
+        canGoForward: safeGet(() => el.canGoForward(), false)
       })
     }
 
+    el.addEventListener('dom-ready', handleDomReady)
     el.addEventListener('did-start-loading', handleStartLoading)
     el.addEventListener('did-stop-loading', handleStopLoading)
     el.addEventListener('page-title-updated', handleTitleUpdated)
@@ -60,18 +86,26 @@ const BrowserView = forwardRef<BrowserViewHandle, Props>(function BrowserView(
     el.addEventListener('did-navigate-in-page', handleNavigateInPage)
 
     return () => {
+      el.removeEventListener('dom-ready', handleDomReady)
       el.removeEventListener('did-start-loading', handleStartLoading)
       el.removeEventListener('did-stop-loading', handleStopLoading)
       el.removeEventListener('page-title-updated', handleTitleUpdated)
       el.removeEventListener('did-navigate', handleNavigate)
       el.removeEventListener('did-navigate-in-page', handleNavigateInPage)
     }
-  }, [onUpdate])
+  }, [onUpdate, tab.url])
 
   useEffect(() => {
     const el = wvRef.current
     if (!el) return
-    if (el.getURL && el.getURL() && el.getURL() !== tab.url && tab.url !== 'about:blank') {
+    if (!domReadyRef.current) return
+    let current = ''
+    try {
+      current = el.getURL()
+    } catch {
+      return
+    }
+    if (current && current !== tab.url && tab.url && tab.url !== 'about:blank') {
       try {
         el.loadURL(tab.url)
       } catch {
@@ -85,8 +119,6 @@ const BrowserView = forwardRef<BrowserViewHandle, Props>(function BrowserView(
       <webview
         ref={wvRef as unknown as React.RefObject<HTMLElement>}
         src={tab.url || 'about:blank'}
-        /* eslint-disable-next-line react/no-unknown-property */
-        allowpopups={true}
         /* eslint-disable-next-line react/no-unknown-property */
         partition="persist:comet"
         style={{ width: '100%', height: '100%', display: 'flex' }}
