@@ -6,8 +6,11 @@ A new **Agent mode** toggle in the AI sidebar. When enabled, the user types a go
 
 ## Provider for tests
 
-- Ollama (local), model **`qwen2.5:3b`**, base `http://localhost:11434`.
-- Model swapped from `qwen2.5:7b` because 7B on this VM's CPU produced no first step within 3+ minutes (Ollama runner pegged at 700%+ CPU). 3B reliably outputs the same JSON schema in ~10–20 s/step.
+- Ollama (local), model **`llama3.2:1b`**, base `http://localhost:11434`.
+- 7B and 3B both took multiple minutes per step on this 8-core VM, blowing past practical test budgets. 1B is fast (~1-3 s/step). Reliable JSON is now guaranteed by Ollama's `format: "json"` mode — see commit `6c4d08d` which adds `jsonMode: true` to the agent path. The previous `extractJson` failure on 3B/7B was because they returned prose; with `format=json` even 1B is forced to emit a JSON object.
+- Two prerequisite fixes that this run validates:
+  - `f2f5c22` — disable undici headers/body timeouts in `src/main/ai/ollama.ts` (slow CPU eval no longer kills the request).
+  - `6c4d08d` — pass `jsonMode` from agent → ollama provider so the model is constrained to JSON.
 
 ## Tests
 
@@ -15,7 +18,7 @@ A new **Agent mode** toggle in the AI sidebar. When enabled, the user types a go
 
 **Goal:** prove the snapshot/LLM/execute loop works end-to-end and that `done` produces a final summary card grounded in real page content.
 
-1. Open the app. Click the gear icon, switch provider to **Ollama (local)**, pick model `qwen2.5:3b`, Save.
+1. Open the app. Click the gear icon, switch provider to **Ollama (local)**, pick model `llama3.2:1b`, Save.
 2. Tick the **Agent mode** checkbox in the sidebar. Verify:
    - Header shows the badge `AGENT` next to "AI Assistant" (`AIChat.tsx:265-268`, `.agent-badge` style).
    - The Send button changes to **Run**.

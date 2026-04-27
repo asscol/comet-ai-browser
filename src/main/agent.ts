@@ -66,26 +66,51 @@ function extractJson(raw: string): unknown {
   return JSON.parse(slice)
 }
 
-function parseAction(raw: string): AgentAction {
-  const obj = extractJson(raw) as Record<string, unknown>
-  const action = obj.action
-  if (typeof action !== 'string' || !VALID_ACTIONS.includes(action as AgentActionType)) {
-    throw new Error(`agent: invalid action "${String(action)}"`)
+function coerceAction(obj: Record<string, unknown>): AgentAction | null {
+  const rawAction = obj.action
+  const action =
+    typeof rawAction === 'string' && VALID_ACTIONS.includes(rawAction as AgentActionType)
+      ? (rawAction as AgentActionType)
+      : null
+  if (!action) {
+    // Some small models skip "action" and put a plain answer in "summary"/"answer"/"response".
+    // Treat those as a final `done`.
+    const fallbackSummary =
+      typeof obj.summary === 'string'
+        ? obj.summary
+        : typeof obj.answer === 'string'
+          ? obj.answer
+          : typeof obj.response === 'string'
+            ? obj.response
+            : null
+    if (fallbackSummary) {
+      return { thought: '', action: 'done', args: { summary: fallbackSummary } }
+    }
+    return null
   }
   const thought = typeof obj.thought === 'string' ? obj.thought : ''
   const args = obj.args && typeof obj.args === 'object' ? (obj.args as Record<string, unknown>) : {}
-  return { thought, action: action as AgentActionType, args }
+  return { thought, action, args }
 }
 
-export async function runAgentStep(
+function parseAction(raw: string): AgentAction {
+  const obj = extractJson(raw) as Record<string, unknown>
+  const coerced = coerceAction(obj)
+  if (!coerced) {
+    const preview = raw.length > 240 ? `${raw.slice(0, 240)}…` : raw
+    throw new Error(`agent: model returned no usable action. Raw: ${preview}`)
+  }
+  return coerced
+}
+
+async function callLLM(
   settings: AppSettings,
   messages: ChatMessage[],
   signal: AbortSignal
-): Promise<AgentStepResponse> {
+): Promise<string> {
   const config = settings.providers[settings.activeProvider]
   const handler = providerHandlers[settings.activeProvider]
   if (!handler) throw new Error(`Unsupported provider: ${settings.activeProvider}`)
-
   let buffer = ''
   await handler({
     config,
@@ -97,7 +122,37 @@ export async function runAgentStep(
       buffer += delta
     }
   })
+  return buffer
+}
 
-  const action = parseAction(buffer)
-  return { action, raw: buffer }
+export async function runAgentStep(
+  settings: AppSettings,
+  messages: ChatMessage[],
+  signal: AbortSignal
+): Promise<AgentStepResponse> {
+  let buffer = await callLLM(settings, messages, signal)
+  console.log('[agent] model raw output (first attempt):', buffer.slice(0, 400))
+
+  try {
+    const action = parseAction(buffer)
+    return { action, raw: buffer }
+  } catch {
+    // Retry once with a corrective system reminder when the schema isn't followed.
+    // Small models (e.g. llama3.2:1b) frequently miss the `action` field on the first try.
+    const correction: ChatMessage = {
+      id: 'agent-correction',
+      role: 'user',
+      content: `Your previous response was not a valid action JSON object. Reply ONLY with a JSON object of the form {"thought":"...","action":"navigate|click|type|scroll|wait|read|execute_js|done","args":{...}}. The action field is REQUIRED and must be one of those exact strings. Your previous output was:\n${buffer.slice(0, 800)}`
+    }
+    const priorAssistant: ChatMessage = {
+      id: 'agent-prior',
+      role: 'assistant',
+      content: buffer
+    }
+    const retryMessages: ChatMessage[] = [...messages, priorAssistant, correction]
+    buffer = await callLLM(settings, retryMessages, signal)
+    console.log('[agent] model raw output (retry):', buffer.slice(0, 400))
+    const action = parseAction(buffer)
+    return { action, raw: buffer }
+  }
 }
